@@ -35,7 +35,7 @@ public class KyberExecutionTimeExampleTest {
         double[] executionTimes1024 = new double[numberOfExecutions];
 
         // Warm-up Kyber512
-        warmUpKyber(KyberParameterSpec.kyber512);
+        warmUpKyber();
 
         // Test Kyber512
         testKyberExecutionTime(KyberParameterSpec.kyber512, executionTimes512);
@@ -50,41 +50,30 @@ public class KyberExecutionTimeExampleTest {
         writeResultsToFile(executionTimes512, executionTimes768, executionTimes1024);
     }
 
-    private void warmUpKyber(KyberParameterSpec kyberParameterSpec) throws Exception {
-        System.out.println("Warm-up Kyber512...");
-        performKyberWarmUp(kyberParameterSpec);
+    private void warmUpKyber() throws Exception {
+        System.out.println("Warm-up Kyber...");
+        performKyberWarmUp();
         System.out.println("Warm-up completed.");
     }
 
-    private void performKyberWarmUp(KyberParameterSpec kyberParameterSpec) throws Exception {
+    private void performKyberWarmUp() throws Exception {
         // Warm-up loop
-        for (int i = 0; i < 10; i++) {
-            if (kyberParameterSpec.equals(KyberParameterSpec.kyber512)) {
-                // Increase the warm-up iterations for Kyber512
-                for (int j = 0; j < 50; j++) {
-                    warmUpIteration(kyberParameterSpec);
-                }
-            } else {
-                warmUpIteration(kyberParameterSpec);
+            for (int j = 0; j < 1000; j++) { // Same number of iterations for all Kyber variations
+                KeyPair senderKeyPair = KyberExample.generateKeyPair(KyberParameterSpec.kyber512);
+                PublicKey senderPublicKey = senderKeyPair.getPublic();
+
+                SecretKeyWithEncapsulation secretKeyWithEncapsulation = KyberExample.generateSecretKeySender(senderPublicKey);
+                byte[] encapsulation = secretKeyWithEncapsulation.getEncapsulation();
+
+                KeyPair receiverKeyPair = KyberExample.generateKeyPair(KyberParameterSpec.kyber512);
+                PrivateKey receiverPrivateKey = receiverKeyPair.getPrivate();
+
+                KyberExample.generateSecretKeyReceiver(receiverPrivateKey, encapsulation);
             }
-        }
-    }
-
-    private void warmUpIteration(KyberParameterSpec kyberParameterSpec) throws Exception {
-        KeyPair senderKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
-        PublicKey senderPublicKey = senderKeyPair.getPublic();
-
-        SecretKeyWithEncapsulation secretKeyWithEncapsulation = KyberExample.generateSecretKeySender(senderPublicKey);
-        byte[] encapsulation = secretKeyWithEncapsulation.getEncapsulation();
-
-        KeyPair receiverKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
-        PrivateKey receiverPrivateKey = receiverKeyPair.getPrivate();
-
-        KyberExample.generateSecretKeyReceiver(receiverPrivateKey, encapsulation);
     }
 
     private void testKyberExecutionTime(KyberParameterSpec kyberParameterSpec, double[] executionTimes) throws Exception {
-        System.out.println("Testing Kyber512...");
+        System.out.println("Testing Kyber" + kyberParameterSpec.getName() + "...");
         performKyberTests(kyberParameterSpec, executionTimes);
         System.out.println("Testing completed.");
     }
