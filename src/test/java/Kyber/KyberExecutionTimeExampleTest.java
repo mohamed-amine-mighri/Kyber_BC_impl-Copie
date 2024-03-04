@@ -1,29 +1,29 @@
-package KyberTests.kyber;
+package Kyber;
 
 import org.bouncycastle.jcajce.SecretKeyWithEncapsulation;
 import org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider;
 import org.bouncycastle.pqc.jcajce.spec.KyberParameterSpec;
-import org.example.kyber.KyberAlgo;
+import org.example.kyber.KyberExample;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
 import java.util.Arrays;
 
-public class TestKyberExecutionTimes {
+public class KyberExecutionTimeExampleTest {
 
     @BeforeClass
     public static void setUp() {
         // Add Bouncy Castle PQC provider
         Security.addProvider(new BouncyCastlePQCProvider());
     }
+
 
     @Test
     public void testKyberExecutionTimes() throws Exception {
@@ -57,26 +57,30 @@ public class TestKyberExecutionTimes {
     }
 
     private void performKyberWarmUp(KyberParameterSpec kyberParameterSpec) throws Exception {
-        Method generateKeyPairMethod = KyberAlgo.class.getDeclaredMethod("generateKeyPair", KyberParameterSpec.class);
-        generateKeyPairMethod.setAccessible(true);
-        Method generateSecretKeySenderMethod = KyberAlgo.class.getDeclaredMethod("generateSecretKeySender", PublicKey.class);
-        generateSecretKeySenderMethod.setAccessible(true);
-        Method generateSecretKeyReceiverMethod = KyberAlgo.class.getDeclaredMethod("generateSecretKeyReceiver", PrivateKey.class, byte[].class);
-        generateSecretKeyReceiverMethod.setAccessible(true);
-
         // Warm-up loop
         for (int i = 0; i < 10; i++) {
-            KeyPair senderKeyPair = (KeyPair) generateKeyPairMethod.invoke(null, kyberParameterSpec);
-            PublicKey senderPublicKey = senderKeyPair.getPublic();
-
-            SecretKeyWithEncapsulation secretKeyWithEncapsulation = (SecretKeyWithEncapsulation) generateSecretKeySenderMethod.invoke(null, senderPublicKey);
-            byte[] encapsulation = secretKeyWithEncapsulation.getEncapsulation();
-
-            KeyPair receiverKeyPair = (KeyPair) generateKeyPairMethod.invoke(null, kyberParameterSpec);
-            PrivateKey receiverPrivateKey = receiverKeyPair.getPrivate();
-
-            generateSecretKeyReceiverMethod.invoke(null, receiverPrivateKey, encapsulation);
+            if (kyberParameterSpec.equals(KyberParameterSpec.kyber512)) {
+                // Increase the warm-up iterations for Kyber512
+                for (int j = 0; j < 50; j++) {
+                    warmUpIteration(kyberParameterSpec);
+                }
+            } else {
+                warmUpIteration(kyberParameterSpec);
+            }
         }
+    }
+
+    private void warmUpIteration(KyberParameterSpec kyberParameterSpec) throws Exception {
+        KeyPair senderKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
+        PublicKey senderPublicKey = senderKeyPair.getPublic();
+
+        SecretKeyWithEncapsulation secretKeyWithEncapsulation = KyberExample.generateSecretKeySender(senderPublicKey);
+        byte[] encapsulation = secretKeyWithEncapsulation.getEncapsulation();
+
+        KeyPair receiverKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
+        PrivateKey receiverPrivateKey = receiverKeyPair.getPrivate();
+
+        KyberExample.generateSecretKeyReceiver(receiverPrivateKey, encapsulation);
     }
 
     private void testKyberExecutionTime(KyberParameterSpec kyberParameterSpec, double[] executionTimes) throws Exception {
@@ -86,29 +90,22 @@ public class TestKyberExecutionTimes {
     }
 
     private void performKyberTests(KyberParameterSpec kyberParameterSpec, double[] executionTimes) throws Exception {
-        Method generateKeyPairMethod = KyberAlgo.class.getDeclaredMethod("generateKeyPair", KyberParameterSpec.class);
-        generateKeyPairMethod.setAccessible(true);
-        Method generateSecretKeySenderMethod = KyberAlgo.class.getDeclaredMethod("generateSecretKeySender", PublicKey.class);
-        generateSecretKeySenderMethod.setAccessible(true);
-        Method generateSecretKeyReceiverMethod = KyberAlgo.class.getDeclaredMethod("generateSecretKeyReceiver", PrivateKey.class, byte[].class);
-        generateSecretKeyReceiverMethod.setAccessible(true);
-
         System.gc();
         for (int i = 0; i < executionTimes.length; i++) {
             long startTime = System.nanoTime();
+
             // Generate key pair and encapsulation
-            KeyPair senderKeyPair = (KeyPair) generateKeyPairMethod.invoke(null, kyberParameterSpec);
+            KeyPair senderKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
             PublicKey senderPublicKey = senderKeyPair.getPublic();
 
-            SecretKeyWithEncapsulation secretKeyWithEncapsulation = (SecretKeyWithEncapsulation) generateSecretKeySenderMethod.invoke(null, senderPublicKey);
+            SecretKeyWithEncapsulation secretKeyWithEncapsulation = KyberExample.generateSecretKeySender(senderPublicKey);
             byte[] encapsulation = secretKeyWithEncapsulation.getEncapsulation();
 
-            KeyPair receiverKeyPair = (KeyPair) generateKeyPairMethod.invoke(null, kyberParameterSpec);
+            KeyPair receiverKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
             PrivateKey receiverPrivateKey = receiverKeyPair.getPrivate();
 
-            generateSecretKeyReceiverMethod.invoke(null, receiverPrivateKey, encapsulation);
-
-            executionTimes[i] = (System.nanoTime() - startTime) / 1_000_000.0;
+            KyberExample.generateSecretKeyReceiver(receiverPrivateKey, encapsulation);
+            executionTimes[i] = (System.nanoTime() - startTime) / 1000000.0;
         }
     }
 
@@ -132,6 +129,7 @@ public class TestKyberExecutionTimes {
 
         writer.write("======================================================================================\n\n");
     }
+
     private double calculateStandardDeviation(double[] times) {
         double mean = calculateAverage(times);
 
@@ -145,65 +143,54 @@ public class TestKyberExecutionTimes {
     }
     private double findLongest(double[] times) {
         double longest = Double.MIN_VALUE;
-
-        // Start the loop from the second element (index 1)
-        for (int i = 1; i < times.length; i++) {
-            if (times[i] > longest) {
-                longest = times[i];
+        for (double time : times) {
+            if (time > longest) {
+                longest = time;
             }
         }
-
         return longest;
     }
 
     private double findShortest(double[] times) {
         double shortest = Double.MAX_VALUE;
-
-        // Start the loop from the second element (index 1)
-        for (int i = 1; i < times.length; i++) {
-            if (times[i] < shortest) {
-                shortest = times[i];
+        for (double time : times) {
+            if (time < shortest) {
+                shortest = time;
             }
         }
-
         return shortest;
     }
 
     private double calculateAverage(double[] times) {
         double sum = 0.0;
-
-        // Start the loop from the second element (index 1)
-        for (int i = 1; i < times.length; i++) {
-            sum += times[i];
+        for (double time : times) {
+            sum += time;
         }
-
-        // Calculate the average based on the sum and the reduced length
-        return sum / (times.length - 1);
+        return sum / times.length;
     }
 }
 
 
 
-
-//package KyberTests.kyber;
+//package Kyber;
 //
 //import org.bouncycastle.jcajce.SecretKeyWithEncapsulation;
 //import org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider;
 //import org.bouncycastle.pqc.jcajce.spec.KyberParameterSpec;
-//import org.example.kyber.KyberAlgo;
+//import org.example.kyber.KyberExample;
 //import org.junit.BeforeClass;
 //import org.junit.Test;
 //
 //import java.io.BufferedWriter;
 //import java.io.FileWriter;
 //import java.io.IOException;
-//import java.lang.reflect.Method;
 //import java.security.KeyPair;
 //import java.security.PrivateKey;
 //import java.security.PublicKey;
 //import java.security.Security;
+//import java.util.Arrays;
 //
-//public class TestKyberExecutionTimes {
+//public class KyberExecutionTimeExampleTest {
 //
 //    @BeforeClass
 //    public static void setUp() {
@@ -237,45 +224,51 @@ public class TestKyberExecutionTimes {
 //    }
 //
 //    private void warmUpKyber(KyberParameterSpec kyberParameterSpec) throws Exception {
-//        Method generateKeyPairMethod = KyberAlgo.class.getDeclaredMethod("generateKeyPair", KyberParameterSpec.class);
-//        generateKeyPairMethod.setAccessible(true);
-//        Method generateSecretKeySenderMethod = KyberAlgo.class.getDeclaredMethod("generateSecretKeySender", PublicKey.class);
-//        generateSecretKeySenderMethod.setAccessible(true);
-//        Method generateSecretKeyReceiverMethod = KyberAlgo.class.getDeclaredMethod("generateSecretKeyReceiver", PrivateKey.class, byte[].class);
-//        generateSecretKeyReceiverMethod.setAccessible(true);
+//        System.out.println("Warm-up Kyber512...");
+//        performKyberWarmUp(kyberParameterSpec);
+//        System.out.println("Warm-up completed.");
+//    }
 //
-//        KeyPair senderKeyPair = (KeyPair) generateKeyPairMethod.invoke(null, kyberParameterSpec);
-//        SecretKeyWithEncapsulation secretKeySender = (SecretKeyWithEncapsulation) generateSecretKeySenderMethod.invoke(null, senderKeyPair.getPublic());
-//        byte[] encapsulation = secretKeySender.getEncapsulation();
+//    private void performKyberWarmUp(KyberParameterSpec kyberParameterSpec) throws Exception {
+//        // Warm-up loop
+//        for (int i = 0; i < 10; i++) {
+//            KeyPair senderKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
+//            PublicKey senderPublicKey = senderKeyPair.getPublic();
 //
-//        KeyPair receiverKeyPair = (KeyPair) generateKeyPairMethod.invoke(null, kyberParameterSpec);
-//        generateSecretKeyReceiverMethod.invoke(null, receiverKeyPair.getPrivate(), encapsulation);
+//            SecretKeyWithEncapsulation secretKeyWithEncapsulation = KyberExample.generateSecretKeySender(senderPublicKey);
+//            byte[] encapsulation = secretKeyWithEncapsulation.getEncapsulation();
+//
+//            KeyPair receiverKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
+//            PrivateKey receiverPrivateKey = receiverKeyPair.getPrivate();
+//
+//            KyberExample.generateSecretKeyReceiver(receiverPrivateKey, encapsulation);
+//        }
 //    }
 //
 //    private void testKyberExecutionTime(KyberParameterSpec kyberParameterSpec, double[] executionTimes) throws Exception {
-//        Method generateKeyPairMethod = KyberAlgo.class.getDeclaredMethod("generateKeyPair", KyberParameterSpec.class);
-//        generateKeyPairMethod.setAccessible(true);
-//        Method generateSecretKeySenderMethod = KyberAlgo.class.getDeclaredMethod("generateSecretKeySender", PublicKey.class);
-//        generateSecretKeySenderMethod.setAccessible(true);
-//        Method generateSecretKeyReceiverMethod = KyberAlgo.class.getDeclaredMethod("generateSecretKeyReceiver", PrivateKey.class, byte[].class);
-//        generateSecretKeyReceiverMethod.setAccessible(true);
+//        System.out.println("Testing Kyber512...");
+//        performKyberTests(kyberParameterSpec, executionTimes);
+//        System.out.println("Testing completed.");
+//    }
+//
+//    private void performKyberTests(KyberParameterSpec kyberParameterSpec, double[] executionTimes) throws Exception {
 //        System.gc();
 //        for (int i = 0; i < executionTimes.length; i++) {
-//
 //            long startTime = System.nanoTime();
+//
 //            // Generate key pair and encapsulation
-//            KeyPair senderKeyPair = (KeyPair) generateKeyPairMethod.invoke(null, kyberParameterSpec);
+//            KeyPair senderKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
 //            PublicKey senderPublicKey = senderKeyPair.getPublic();
 //
-//            SecretKeyWithEncapsulation secretKeyWithEncapsulation = (SecretKeyWithEncapsulation) generateSecretKeySenderMethod.invoke(null, senderPublicKey);
+//            SecretKeyWithEncapsulation secretKeyWithEncapsulation = KyberExample.generateSecretKeySender(senderPublicKey);
 //            byte[] encapsulation = secretKeyWithEncapsulation.getEncapsulation();
 //
-//            KeyPair receiverKeyPair = (KeyPair) generateKeyPairMethod.invoke(null, kyberParameterSpec);
+//            KeyPair receiverKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
 //            PrivateKey receiverPrivateKey = receiverKeyPair.getPrivate();
 //
-//            generateSecretKeyReceiverMethod.invoke(null, receiverPrivateKey, encapsulation);
-//
-//            executionTimes[i] = (System.nanoTime() - startTime) / 1_000_000.0;
+//            KyberExample.generateSecretKeyReceiver(receiverPrivateKey, encapsulation);
+//            //assertEquals(receiverPrivateKey, encapsulation);
+//            executionTimes[i] = (System.nanoTime() - startTime) / 1000000.0;
 //        }
 //    }
 //
@@ -295,34 +288,58 @@ public class TestKyberExecutionTimes {
 //        writer.write("Longest Execution Time: " + findLongest(executionTimes) + " ms\n");
 //        writer.write("Shortest Execution Time: " + findShortest(executionTimes) + " ms\n");
 //        writer.write("Average Execution Time: " + calculateAverage(executionTimes) + " ms\n");
+//        writer.write("Standard Deviation: " + calculateStandardDeviation(executionTimes) + " ms\n");
+//
 //        writer.write("======================================================================================\n\n");
+//    }
+//
+//    private double calculateStandardDeviation(double[] times) {
+//        double mean = calculateAverage(times);
+//
+//        // Start the stream from the second element (index 1)
+//        double sumSquaredDifferences = Arrays.stream(times, 1, times.length)
+//                .map(time -> Math.pow(time - mean, 2))
+//                .sum();
+//
+//        // Calculate the standard deviation based on the adjusted length
+//        return Math.sqrt(sumSquaredDifferences / (times.length - 1));
 //    }
 //
 //    private double findLongest(double[] times) {
 //        double longest = Double.MIN_VALUE;
-//        for (double time : times) {
-//            if (time > longest) {
-//                longest = time;
+//
+//        // Start the loop from the second element (index 1)
+//        for (int i = 1; i < times.length; i++) {
+//            if (times[i] > longest) {
+//                longest = times[i];
 //            }
 //        }
+//
 //        return longest;
 //    }
 //
 //    private double findShortest(double[] times) {
 //        double shortest = Double.MAX_VALUE;
-//        for (double time : times) {
-//            if (time < shortest) {
-//                shortest = time;
+//
+//        // Start the loop from the second element (index 1)
+//        for (int i = 1; i < times.length; i++) {
+//            if (times[i] < shortest) {
+//                shortest = times[i];
 //            }
 //        }
+//
 //        return shortest;
 //    }
 //
 //    private double calculateAverage(double[] times) {
 //        double sum = 0.0;
-//        for (double time : times) {
-//            sum += time;
+//
+//        // Start the loop from the second element (index 1)
+//        for (int i = 1; i < times.length; i++) {
+//            sum += times[i];
 //        }
-//        return sum / times.length;
+//
+//        // Calculate the average based on the sum and the reduced length
+//        return sum / (times.length - 1);
 //    }
 //}

@@ -18,7 +18,7 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk14</artifactId>
-            <version>1.75</version> <!-- Use the latest version available -->
+            <version>1.75</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
