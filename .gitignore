@@ -1,2 +1,2 @@
-test/java/DH/DiffieHellmanExampleMemoryTest.java
-test/java/DH/DiffieHellmanExampleTest.java
+src/test/java/DH/DiffieHellmanExampleMemoryTest.java
+src/test/java/DH/DiffieHellmanExampleTest.java
