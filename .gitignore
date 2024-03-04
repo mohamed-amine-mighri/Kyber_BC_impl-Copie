@@ -1,2 +1,2 @@
-.target
-.idea
+test/java/DH/DiffieHellmanExampleMemoryTest.java
+test/java/DH/DiffieHellmanExampleTest.java

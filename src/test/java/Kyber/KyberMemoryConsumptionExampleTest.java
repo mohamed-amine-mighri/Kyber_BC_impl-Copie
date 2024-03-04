@@ -15,6 +15,7 @@ import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.Security;
+import java.util.Arrays;
 
 public class KyberMemoryConsumptionExampleTest {
 
@@ -24,40 +25,49 @@ public class KyberMemoryConsumptionExampleTest {
         Security.addProvider(new BouncyCastlePQCProvider());
     }
 
-
     @Test
     public void testKyberMemoryUsage() throws Exception {
         int warmUpIterations = 5;
-        int numberOfExecutions512 = 1000;
-        int numberOfExecutions768 = 1000;
-        int numberOfExecutions1024 = 1000;
+        int numberOfExecutions = 1000;
+
+        // Arrays to store memory usage
+        double[] memoryUsage512 = new double[numberOfExecutions];
+        double[] memoryUsage768 = new double[numberOfExecutions];
+        double[] memoryUsage1024 = new double[numberOfExecutions];
 
         // Warm-up Kyber512
         for (int i = 0; i < warmUpIterations; i++) {
             runKyberTest(KyberParameterSpec.kyber512);
         }
 
-        // Arrays to store memory usage
-        double[] memoryUsage512 = new double[numberOfExecutions512];
-        double[] memoryUsage768 = new double[numberOfExecutions768];
-        double[] memoryUsage1024 = new double[numberOfExecutions1024];
-
         // Test Kyber512
-        for (int i = 0; i < numberOfExecutions512; i++) {
+        for (int i = 0; i < numberOfExecutions; i++) {
+            System.gc();
             memoryUsage512[i] = runKyberTest(KyberParameterSpec.kyber512);
         }
 
+        // Warm-up Kyber768
+        for (int i = 0; i < warmUpIterations; i++) {
+            runKyberTest(KyberParameterSpec.kyber768);
+        }
+
         // Test Kyber768
-        for (int i = 0; i < numberOfExecutions768; i++) {
+        for (int i = 0; i < numberOfExecutions; i++) {
+            System.gc();
             memoryUsage768[i] = runKyberTest(KyberParameterSpec.kyber768);
         }
 
+        // Warm-up Kyber1024
+        for (int i = 0; i < warmUpIterations; i++) {
+            runKyberTest(KyberParameterSpec.kyber1024);
+        }
+
         // Test Kyber1024
-        for (int i = 0; i < numberOfExecutions1024; i++) {
+        for (int i = 0; i < numberOfExecutions; i++) {
+            System.gc();
             memoryUsage1024[i] = runKyberTest(KyberParameterSpec.kyber1024);
         }
 
-        // Write results to a file
         // Write results to a file
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("KyberTestsResults/kyber_memory_usage.txt"))) {
             writer.write("Kyber memory usage tests for key pair generation and secret key encapsulation: \n");
@@ -65,31 +75,29 @@ public class KyberMemoryConsumptionExampleTest {
             writer.write("\n");
 
             // Writing Kyber512 results
-            writer.write(String.format("Kyber512: Maximum Memory Usage: %.2f megabytes\n", findMaximum(memoryUsage512)));
-            writer.write(String.format("Kyber512: Minimum Memory Usage: %.2f megabytes\n", findMinimum(memoryUsage512)));
-            writer.write(String.format("Kyber512: Average Memory Usage: %.2f megabytes\n", calculateAverage(memoryUsage512)));
-            writer.write("======================================================================================\n");
+            writeResults(writer, "Kyber512", memoryUsage512);
 
             // Writing Kyber768 results
-            writer.write(String.format("Kyber768: Maximum Memory Usage: %.2f megabytes\n", findMaximum(memoryUsage768)));
-            writer.write(String.format("Kyber768: Minimum Memory Usage: %.2f megabytes\n", findMinimum(memoryUsage768)));
-            writer.write(String.format("Kyber768: Average Memory Usage: %.2f megabytes\n", calculateAverage(memoryUsage768)));
-            writer.write("======================================================================================\n");
+            writeResults(writer, "Kyber768", memoryUsage768);
 
             // Writing Kyber1024 results
-            writer.write(String.format("Kyber1024: Maximum Memory Usage: %.2f megabytes\n", findMaximum(memoryUsage1024)));
-            writer.write(String.format("Kyber1024: Minimum Memory Usage: %.2f megabytes\n", findMinimum(memoryUsage1024)));
-            writer.write(String.format("Kyber1024: Average Memory Usage: %.2f megabytes\n", calculateAverage(memoryUsage1024)));
+            writeResults(writer, "Kyber1024", memoryUsage1024);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
 
+    private void writeResults(BufferedWriter writer, String kyberType, double[] memoryUsage) throws IOException {
+        writer.write(String.format("%s: Maximum Memory Usage: %.2f megabytes\n", kyberType, findMaximum(memoryUsage)));
+        writer.write(String.format("%s: Minimum Memory Usage: %.2f megabytes\n", kyberType, findMinimum(memoryUsage)));
+        writer.write(String.format("%s: Average Memory Usage: %.2f megabytes\n", kyberType, calculateAverage(memoryUsage)));
+        writer.write(String.format("%s: Standard Deviation: %.2f megabytes\n", kyberType, calculateStandardDeviation(memoryUsage)));
+        writer.write("======================================================================================\n");
     }
 
     private double runKyberTest(KyberParameterSpec kyberParameterSpec) throws Exception {
         // Run garbage collection before each measurement
-        System.gc();
-        long startMemory = getMemoryUsage();
+        //System.gc();
         // Generate key pair and encapsulation for Kyber
         KeyPair keyPair = KyberExample.generateKeyPair(kyberParameterSpec);
         PublicKey publicKey = keyPair.getPublic();
@@ -98,41 +106,35 @@ public class KyberMemoryConsumptionExampleTest {
         KeyPair receiverKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
         PrivateKey receiverPrivateKey = receiverKeyPair.getPrivate();
         KyberExample.generateSecretKeyReceiver(receiverPrivateKey, encapsulation);
-        return (getMemoryUsage() - startMemory) / (1024.0 * 1024.0); // Convert to megabytes
+        return getMemoryUsage(); // Convert to megabytes
     }
 
-    private long getMemoryUsage() {
+    private static long getMemoryUsage() {
         Runtime runtime = Runtime.getRuntime();
-        return runtime.totalMemory() - runtime.freeMemory();
-    }
+        long totalMemory = runtime.totalMemory();
+        long freeMemory = runtime.freeMemory();
+        long usedMemory = totalMemory - freeMemory;
 
+        return usedMemory / (1024 * 1024); // Convert to megabytes
+    }
 
     private double findMaximum(double[] values) {
-        double maximum = Double.MIN_VALUE;
-        for (double value : values) {
-            if (value > maximum) {
-                maximum = value;
-            }
-        }
-        return maximum;
+        return Arrays.stream(values).max().orElse(Double.MIN_VALUE);
     }
 
     private double findMinimum(double[] values) {
-        double minimum = Double.MAX_VALUE;
-        for (double value : values) {
-            if (value < minimum) {
-                minimum = value;
-            }
-        }
-        return minimum;
+        return Arrays.stream(values).min().orElse(Double.MAX_VALUE);
     }
 
     private double calculateAverage(double[] values) {
-        double sum = 0.0;
-        for (double value : values) {
-            sum += value;
-        }
-        return sum / values.length;
+        return Arrays.stream(values).average().orElse(0.0);
+    }
+
+    private double calculateStandardDeviation(double[] values) {
+        double average = calculateAverage(values);
+        double sum = Arrays.stream(values).map(x -> Math.pow(x - average, 2)).sum();
+        double variance = sum / values.length;
+        return Math.sqrt(variance);
     }
 }
 

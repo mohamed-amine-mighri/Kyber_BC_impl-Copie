@@ -26,6 +26,7 @@ public class KyberKeyGenerationTest {
         Security.addProvider(new BouncyCastlePQCProvider());
     }
 
+
     @Test
     public void testKyberExecutionTimes() throws Exception {
         int numberOfExecutions = 1000;
@@ -36,7 +37,7 @@ public class KyberKeyGenerationTest {
         double[] executionTimes1024 = new double[numberOfExecutions];
 
         // Warm-up Kyber512
-        warmUpKyber(KyberParameterSpec.kyber512);
+        warmUpKyber();
 
         // Test Kyber512
         testKyberExecutionTime(KyberParameterSpec.kyber512, executionTimes512);
@@ -51,22 +52,22 @@ public class KyberKeyGenerationTest {
         writeResultsToFile(executionTimes512, executionTimes768, executionTimes1024);
     }
 
-    private void warmUpKyber(KyberParameterSpec kyberParameterSpec) throws Exception {
-        System.out.println("Warm-up Kyber512...");
-        performKyberWarmUp(kyberParameterSpec);
+    private void warmUpKyber() throws Exception {
+        System.out.println("Warm-up Kyber...");
+        performKyberWarmUp();
         System.out.println("Warm-up completed.");
     }
 
-    private void performKyberWarmUp(KyberParameterSpec kyberParameterSpec) throws Exception {
+    private void performKyberWarmUp() throws Exception {
         // Warm-up loop
-        for (int i = 0; i < 10; i++) {
-            KeyPair senderKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
+        for (int j = 0; j < 1000; j++) { // Same number of iterations for all Kyber variations
+            KeyPair senderKeyPair = KyberExample.generateKeyPair(KyberParameterSpec.kyber512);
             PublicKey senderPublicKey = senderKeyPair.getPublic();
 
             SecretKeyWithEncapsulation secretKeyWithEncapsulation = KyberExample.generateSecretKeySender(senderPublicKey);
             byte[] encapsulation = secretKeyWithEncapsulation.getEncapsulation();
 
-            KeyPair receiverKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
+            KeyPair receiverKeyPair = KyberExample.generateKeyPair(KyberParameterSpec.kyber512);
             PrivateKey receiverPrivateKey = receiverKeyPair.getPrivate();
 
             KyberExample.generateSecretKeyReceiver(receiverPrivateKey, encapsulation);
@@ -74,7 +75,7 @@ public class KyberKeyGenerationTest {
     }
 
     private void testKyberExecutionTime(KyberParameterSpec kyberParameterSpec, double[] executionTimes) throws Exception {
-        System.out.println("Testing Kyber512...");
+        System.out.println("Testing Kyber" + kyberParameterSpec.getName() + "...");
         performKyberTests(kyberParameterSpec, executionTimes);
         System.out.println("Testing completed.");
     }
@@ -89,14 +90,13 @@ public class KyberKeyGenerationTest {
             PublicKey senderPublicKey = senderKeyPair.getPublic();
 
             //SecretKeyWithEncapsulation secretKeyWithEncapsulation = KyberExample.generateSecretKeySender(senderPublicKey);
-           // byte[] encapsulation = secretKeyWithEncapsulation.getEncapsulation();
+            //byte[] encapsulation = secretKeyWithEncapsulation.getEncapsulation();
 
             KeyPair receiverKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
-            //PrivateKey receiverPrivateKey = receiverKeyPair.getPrivate();
-            executionTimes[i] = (System.nanoTime() - startTime) / 1000000.0;
-            //KyberExample.generateSecretKeyReceiver(receiverPrivateKey, encapsulation);
-            //assertEquals(receiverPrivateKey, encapsulation);
+            PrivateKey receiverPrivateKey = receiverKeyPair.getPrivate();
 
+            //KyberExample.generateSecretKeyReceiver(receiverPrivateKey, encapsulation);
+            executionTimes[i] = (System.nanoTime() - startTime) / 1000000.0;
         }
     }
 
@@ -132,43 +132,32 @@ public class KyberKeyGenerationTest {
         // Calculate the standard deviation based on the adjusted length
         return Math.sqrt(sumSquaredDifferences / (times.length - 1));
     }
-
     private double findLongest(double[] times) {
         double longest = Double.MIN_VALUE;
-
-        // Start the loop from the second element (index 1)
-        for (int i = 1; i < times.length; i++) {
-            if (times[i] > longest) {
-                longest = times[i];
+        for (double time : times) {
+            if (time > longest) {
+                longest = time;
             }
         }
-
         return longest;
     }
 
     private double findShortest(double[] times) {
         double shortest = Double.MAX_VALUE;
-
-        // Start the loop from the second element (index 1)
-        for (int i = 1; i < times.length; i++) {
-            if (times[i] < shortest) {
-                shortest = times[i];
+        for (double time : times) {
+            if (time < shortest) {
+                shortest = time;
             }
         }
-
         return shortest;
     }
 
     private double calculateAverage(double[] times) {
         double sum = 0.0;
-
-        // Start the loop from the second element (index 1)
-        for (int i = 1; i < times.length; i++) {
-            sum += times[i];
+        for (double time : times) {
+            sum += time;
         }
-
-        // Calculate the average based on the sum and the reduced length
-        return sum / (times.length - 1);
+        return sum / times.length;
     }
-
 }
+
