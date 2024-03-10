@@ -8,7 +8,7 @@ import javax.crypto.KeyAgreement;
 import java.security.*;
 
 public class DH {
-    private static final int KEY_SIZE = 1024;
+    private static final int KEY_SIZE = 2048;
 
     public KeyPair generateKeyPair() throws NoSuchAlgorithmException {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH");
