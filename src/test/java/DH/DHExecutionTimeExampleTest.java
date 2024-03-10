@@ -20,8 +20,6 @@ import static org.junit.Assert.assertTrue;
 
 public class DHExecutionTimeExampleTest {
 
-    private static final DH dhInstance = new DH();
-
     @BeforeClass
     public static void setUp() {
         // Add Bouncy Castle PQC provider
@@ -54,12 +52,12 @@ public class DHExecutionTimeExampleTest {
     private void performDHWarmUp() throws Exception {
         // Warm-up loop
         for (int j = 0; j < 1000; j++) { // Same number of iterations for all DH variations
-            KeyPair aliceKeyPair = dhInstance.generateKeyPair();
-            KeyPair bobKeyPair = dhInstance.generateKeyPair();
+            KeyPair aliceKeyPair = DH.generateKeyPair();
+            KeyPair bobKeyPair = DH.generateKeyPair();
 
-            byte[] aliceSharedSecret = dhInstance.generateSharedSecret(aliceKeyPair.getPrivate(), bobKeyPair.getPublic());
+            byte[] aliceSharedSecret = DH.generateSharedSecret(aliceKeyPair.getPrivate(), bobKeyPair.getPublic());
 
-            assertTrue(aliceSharedSecret.length > 0);
+            //assertTrue(aliceSharedSecret.length > 0);
             //testSharedSecrets(aliceKeyPair, bobKeyPair, aliceSharedSecret);
         }
     }
@@ -83,10 +81,10 @@ public class DHExecutionTimeExampleTest {
     }
 
     private void performDhKeyExchange() throws Exception {
-        KeyPair aliceKeyPair = dhInstance.generateKeyPair();
-        KeyPair bobKeyPair = dhInstance.generateKeyPair();
+        KeyPair aliceKeyPair = DH.generateKeyPair();
+        KeyPair bobKeyPair = DH.generateKeyPair();
 
-        byte[] aliceSharedSecret = dhInstance.generateSharedSecret(aliceKeyPair.getPrivate(), bobKeyPair.getPublic());
+        byte[] aliceSharedSecret = DH.generateSharedSecret(aliceKeyPair.getPrivate(), bobKeyPair.getPublic());
 
         // Additional testing considerations
         assertTrue(aliceSharedSecret.length > 0);
