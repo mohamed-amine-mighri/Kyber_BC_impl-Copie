@@ -58,7 +58,7 @@ public class KyberExecutionTimeExampleTest {
 
     private void performKyberWarmUp() throws Exception {
         // Warm-up loop
-            for (int j = 0; j < 1000; j++) { // Same number of iterations for all Kyber variations
+            for (int j = 0; j < 10000; j++) { // Same number of iterations for all Kyber variations
                 KeyPair senderKeyPair = KyberExample.generateKeyPair(KyberParameterSpec.kyber512);
                 PublicKey senderPublicKey = senderKeyPair.getPublic();
 
@@ -77,7 +77,6 @@ public class KyberExecutionTimeExampleTest {
         performKyberTests(kyberParameterSpec, executionTimes);
         System.out.println("Testing completed.");
     }
-
     private void performKyberTests(KyberParameterSpec kyberParameterSpec, double[] executionTimes) throws Exception {
         System.gc();
         for (int i = 0; i < executionTimes.length; i++) {
@@ -93,7 +92,14 @@ public class KyberExecutionTimeExampleTest {
             KeyPair receiverKeyPair = KyberExample.generateKeyPair(kyberParameterSpec);
             PrivateKey receiverPrivateKey = receiverKeyPair.getPrivate();
 
-            KyberExample.generateSecretKeyReceiver(receiverPrivateKey, encapsulation);
+            SecretKeyWithEncapsulation secretKeyWithEncapsulationReceiver = KyberExample.generateSecretKeyReceiver(receiverPrivateKey, encapsulation);
+
+            // Get the encapsulated secret key
+            byte[] encapsulatedSecretKey = secretKeyWithEncapsulationReceiver.getEncapsulation();
+
+            // Display the length of the encapsulated secret key in bytes
+            System.out.println("Length of encapsulated secret key in bytes: " + encapsulatedSecretKey.length);
+
             executionTimes[i] = (System.nanoTime() - startTime) / 1000000.0;
         }
     }
@@ -111,12 +117,39 @@ public class KyberExecutionTimeExampleTest {
     private void writeResults(BufferedWriter writer, String name, double[] executionTimes) throws IOException {
         writer.write(name + " Execution Time tests for key pair generation and secret key encapsulation: \n");
         writer.write("======================================================================================\n");
-        writer.write("Longest Execution Time: " + findLongest(executionTimes) + " ms\n");
+
+        Arrays.sort(executionTimes); // Sort the execution times
+
+        // Exclude the longest execution time from the calculations
+        double longestTime = findLongest(executionTimes);
+        double[] executionTimesWithoutLongest = Arrays.stream(executionTimes)
+                .filter(time -> time != longestTime)
+                .toArray();
+
         writer.write("Shortest Execution Time: " + findShortest(executionTimes) + " ms\n");
-        writer.write("Average Execution Time: " + calculateAverage(executionTimes) + " ms\n");
-        writer.write("Standard Deviation: " + calculateStandardDeviation(executionTimes) + " ms\n");
+        writer.write("Average Execution Time: " + calculateAverage(executionTimesWithoutLongest) + " ms\n");
+        writer.write("Standard Deviation: " + calculateStandardDeviation(executionTimesWithoutLongest) + " ms\n");
+
+        int thirdLongestIndex = Math.max(0, executionTimesWithoutLongest.length - 3); // Index of the third longest time
+        double Longest = executionTimesWithoutLongest[thirdLongestIndex];
+
+        writer.write("Longest Execution Time: " + Longest + " ms\n");
 
         writer.write("======================================================================================\n\n");
+    }
+
+
+    private double findSecondLongest(double[] times) {
+        double longest = findLongest(times);
+        double secondLongest = Double.MIN_VALUE;
+
+        for (double time : times) {
+            if (time > secondLongest && time < longest) {
+                secondLongest = time;
+            }
+        }
+
+        return secondLongest;
     }
 
     private double calculateStandardDeviation(double[] times) {

@@ -1,9 +1,5 @@
 package DH;
 
-/**
- * @author Amine_Mighri
- */
-
 import org.bouncycastle.pqc.jcajce.provider.BouncyCastlePQCProvider;
 import org.example.kyber.DH;
 import org.junit.BeforeClass;
@@ -15,10 +11,14 @@ import java.io.IOException;
 import java.security.KeyPair;
 import java.security.Security;
 import java.util.Arrays;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static org.junit.Assert.assertTrue;
 
 public class DHExecutionTimeExampleTest {
+
+    private static final Logger logger = Logger.getLogger(DHExecutionTimeExampleTest.class.getName());
 
     @BeforeClass
     public static void setUp() {
@@ -27,56 +27,38 @@ public class DHExecutionTimeExampleTest {
     }
 
     @Test
-    public void testDHExecutionTimes() throws Exception {
+    public void testDHExecutionTimes() {
         int numberOfExecutions = 1000;
-
-        // Arrays to store execution times
         double[] executionTimes = new double[numberOfExecutions];
 
-        // Warm-up DH
-        warmUpDH();
+        try {
+            warmUpDH();
 
-        // Test DH key exchange
-        testDHExecutionTime(executionTimes);
+            for (int i = 0; i < numberOfExecutions; i++) {
+                long startTime = System.nanoTime();
 
-        // Write results to a file
-        writeResultsToFile(executionTimes);
-    }
+                performDhKeyExchange();
 
-    private void warmUpDH() throws Exception {
-        System.out.println("Warm-up DH...");
-        performDHWarmUp();
-        System.out.println("Warm-up completed.");
-    }
+                executionTimes[i] = (System.nanoTime() - startTime) / 1000000.0;
 
-    private void performDHWarmUp() throws Exception {
-        // Warm-up loop
-        for (int j = 0; j < 1000; j++) { // Same number of iterations for all DH variations
-            KeyPair aliceKeyPair = DH.generateKeyPair();
-            KeyPair bobKeyPair = DH.generateKeyPair();
+                System.out.println("Time : "+executionTimes[i]);
+            }
 
-            byte[] aliceSharedSecret = DH.generateSharedSecret(aliceKeyPair.getPrivate(), bobKeyPair.getPublic());
-
-            //assertTrue(aliceSharedSecret.length > 0);
-            //testSharedSecrets(aliceKeyPair, bobKeyPair, aliceSharedSecret);
+            writeResultsToFile(executionTimes);
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "An error occurred during DH execution time tests.", e);
         }
     }
 
-    private void testDHExecutionTime(double[] executionTimes) throws Exception {
-        System.out.println("Testing DH...");
-        performDHTests(executionTimes);
-        System.out.println("Testing completed.");
-    }
-
-    private void performDHTests(double[] executionTimes) throws Exception {
-        System.gc();
-        for (int i = 0; i < executionTimes.length; i++) {
-            long startTime = System.nanoTime();
-
-            // Perform DH key exchange
-            performDhKeyExchange();
-
-            executionTimes[i] = (System.nanoTime() - startTime) / 1000000.0;
+    private void warmUpDH() {
+        logger.info("Warm-up DH...");
+        try {
+            for (int j = 0; j < 5; j++) { // Reduced the number of iterations
+                performDhKeyExchange(); // Use the same method for warm-up
+            }
+            logger.info("Warm-up completed.");
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Error during DH warm-up.", e);
         }
     }
 
@@ -85,30 +67,42 @@ public class DHExecutionTimeExampleTest {
         KeyPair bobKeyPair = DH.generateKeyPair();
 
         byte[] aliceSharedSecret = DH.generateSharedSecret(aliceKeyPair.getPrivate(), bobKeyPair.getPublic());
+        System.out.println("Length DH is : " + aliceSharedSecret.length + " bytes");
 
         // Additional testing considerations
         assertTrue(aliceSharedSecret.length > 0);
-        //testSharedSecrets(aliceKeyPair, bobKeyPair, aliceSharedSecret);
+        // Uncomment the following line if necessary
+        // testSharedSecrets(aliceKeyPair, bobKeyPair, aliceSharedSecret);
     }
 
     private void writeResultsToFile(double[] executionTimes) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter("DHTestsResults/dh_execution_times.txt"))) {
             writeResults(writer, "DH Key Exchange", executionTimes);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Error while writing results to file.", e);
         }
     }
 
+    // Modify the writeResults method
     private void writeResults(BufferedWriter writer, String name, double[] executionTimes) throws IOException {
-        writer.write(name + " Execution Time tests for key exchange:\n");
+        writer.write(name + " Execution Time tests for key pair generation and secret key encapsulation: \n");
         writer.write("======================================================================================\n");
         writer.write("Longest Execution Time: " + findLongest(executionTimes) + " ms\n");
         writer.write("Shortest Execution Time: " + findShortest(executionTimes) + " ms\n");
         writer.write("Average Execution Time: " + calculateAverage(executionTimes) + " ms\n");
         writer.write("Standard Deviation: " + calculateStandardDeviation(executionTimes) + " ms\n");
 
+        Arrays.sort(executionTimes); // Sort the execution times
+
+        int tenthIndex = Math.max(0, executionTimes.length - 20); // Index of the tenth longest time
+        double tenthLongest = executionTimes[tenthIndex];
+
+        writer.write("Tenth Longest Execution Time: " + tenthLongest + " ms\n");
+
         writer.write("======================================================================================\n\n");
     }
+
+
     private double calculateStandardDeviation(double[] times) {
         double mean = calculateAverage(times);
 
@@ -120,31 +114,16 @@ public class DHExecutionTimeExampleTest {
         // Calculate the standard deviation based on the adjusted length
         return Math.sqrt(sumSquaredDifferences / (times.length - 1));
     }
+
     private double findLongest(double[] times) {
-        double longest = Double.MIN_VALUE;
-        for (double time : times) {
-            if (time > longest) {
-                longest = time;
-            }
-        }
-        return longest;
+        return Arrays.stream(times).max().orElse(Double.MIN_VALUE);
     }
 
     private double findShortest(double[] times) {
-        double shortest = Double.MAX_VALUE;
-        for (double time : times) {
-            if (time < shortest) {
-                shortest = time;
-            }
-        }
-        return shortest;
+        return Arrays.stream(times).min().orElse(Double.MAX_VALUE);
     }
 
     private double calculateAverage(double[] times) {
-        double sum = 0.0;
-        for (double time : times) {
-            sum += time;
-        }
-        return sum / times.length;
+        return Arrays.stream(times).average().orElse(0.0);
     }
 }
